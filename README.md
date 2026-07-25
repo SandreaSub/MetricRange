@@ -5,4 +5,4 @@ It replace the yard units with metre units.
 The transition from yards to metres is done in real time when you pass over your mouse.
 As such, it is fast but not instant.
 
-If you are not using an Addon installer, you will have to create a folder named MetricRange and place it in Interface\AddOns.
+If you are not using an Addon installer, you will have to create a folder named MetricRange with both files in it and place it in Interface\AddOns.
