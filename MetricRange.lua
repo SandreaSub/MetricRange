@@ -1,36 +1,27 @@
 -------------------------------------------------
 -- MetricRange
 -- Vanilla 1.12 / Turtle / OctoWoW
--- Instant tooltip scan while a tooltip is visible
+-- No OnUpdate, convert on tooltip OnShow
 -------------------------------------------------
 
 local MetricRangeFrame = CreateFrame("Frame")
-
-local function MetricRange_ConvertNumber(yardsText)
-    local yards = tonumber(yardsText)
-    if not yards then
-        return yardsText
-    end
-
-    local metres = yards * 0.9144
-    metres = math.floor(metres * 10 + 0.5) / 10
-
-    return string.format("%.1f m", metres)
-end
+local MetricRangeHooked = {}
 
 local function MetricRange_Convert(text)
     if type(text) ~= "string" then
         return text
     end
 
-    text = string.gsub(text, "([%d%.]+)%s*[Yy][Dd][Ss]?", MetricRange_ConvertNumber)
-    text = string.gsub(text, "([%d%.]+)%s*[Yy][Aa][Rr][Dd][Ss]?", MetricRange_ConvertNumber)
+    -- plural first
+    text = string.gsub(text, " yards", " metres")
+    text = string.gsub(text, " yard", " metre")
+    text = string.gsub(text, " yd", " m")
 
     return text
 end
 
 local function MetricRange_ConvertTooltip(tooltip)
-    if not tooltip or not tooltip.IsVisible or not tooltip:IsVisible() then
+    if not tooltip or not tooltip.GetName then
         return
     end
 
@@ -65,26 +56,57 @@ local function MetricRange_ConvertTooltip(tooltip)
     end
 end
 
-local function MetricRange_RefreshVisibleTooltips()
-    MetricRange_ConvertTooltip(GameTooltip)
-    MetricRange_ConvertTooltip(ItemRefTooltip)
-    MetricRange_ConvertTooltip(ShoppingTooltip1)
-    MetricRange_ConvertTooltip(ShoppingTooltip2)
-    MetricRange_ConvertTooltip(ShoppingTooltip3)
+local function MetricRange_HookTooltipOnShow(tooltip)
+    if not tooltip or MetricRangeHooked[tooltip] then
+        return
+    end
+
+    MetricRangeHooked[tooltip] = 1
+
+    local oldOnShow = nil
+    if tooltip.GetScript then
+        oldOnShow = tooltip:GetScript("OnShow")
+    end
+
+    tooltip:SetScript("OnShow", function()
+        if oldOnShow then
+            oldOnShow()
+        end
+
+        MetricRange_ConvertTooltip(this)
+    end)
 end
 
-MetricRangeFrame:SetScript("OnUpdate", function()
-    if (GameTooltip and GameTooltip:IsVisible())
-        or (ItemRefTooltip and ItemRefTooltip:IsVisible())
-        or (ShoppingTooltip1 and ShoppingTooltip1:IsVisible())
-        or (ShoppingTooltip2 and ShoppingTooltip2:IsVisible())
-        or (ShoppingTooltip3 and ShoppingTooltip3:IsVisible()) then
-        MetricRange_RefreshVisibleTooltips()
+local function MetricRange_Init()
+    MetricRange_HookTooltipOnShow(GameTooltip)
+    MetricRange_HookTooltipOnShow(ItemRefTooltip)
+    MetricRange_HookTooltipOnShow(ShoppingTooltip1)
+    MetricRange_HookTooltipOnShow(ShoppingTooltip2)
+    MetricRange_HookTooltipOnShow(ShoppingTooltip3)
+
+    if GameTooltip and GameTooltip:IsVisible() then
+        MetricRange_ConvertTooltip(GameTooltip)
     end
-end)
+
+    if ItemRefTooltip and ItemRefTooltip:IsVisible() then
+        MetricRange_ConvertTooltip(ItemRefTooltip)
+    end
+end
+
+local function MetricRange_OnEvent()
+    MetricRange_Init()
+end
+
+MetricRangeFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
+MetricRangeFrame:RegisterEvent("VARIABLES_LOADED")
+MetricRangeFrame:SetScript("OnEvent", MetricRange_OnEvent)
+
+MetricRange_Init()
 
 SLASH_METRICRANGE1 = "/metricrange"
 SlashCmdList["METRICRANGE"] = function()
-    MetricRange_RefreshVisibleTooltips()
-    DEFAULT_CHAT_FRAME:AddMessage("|cffffd200MetricRange|r refreshed")
+    MetricRange_Init()
+    if DEFAULT_CHAT_FRAME then
+        DEFAULT_CHAT_FRAME:AddMessage("|cffffd200MetricRange|r refreshed")
+    end
 end
