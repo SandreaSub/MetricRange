@@ -1,0 +1,7 @@
+## Interface: 11200
+## Title: Metric Range
+## Notes: Converts yard text to metres.
+## Author: ChatGPT
+## Version: 1.4
+
+MetricRange.lua
